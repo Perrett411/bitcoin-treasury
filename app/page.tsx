@@ -118,14 +118,8 @@ function HomeContent() {
       };
 
       // Small delay before starting the animation
-      let cleanup: (() => void) | undefined;
-      const timeout = setTimeout(() => {
-        cleanup = animateRows();
-      }, 1000);
-      return () => {
-        clearTimeout(timeout);
-        cleanup?.();
-      };
+      const timeout = setTimeout(animateRows, 1000);
+      return () => clearTimeout(timeout);
     }
   }, [isFetching, currentRowIndex, finalBoardRows.length]);
 
