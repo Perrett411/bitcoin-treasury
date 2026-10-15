@@ -118,7 +118,14 @@ function HomeContent() {
       };
 
       // Small delay before starting the animation
-      setTimeout(animateRows, 1000);
+      let cleanup: (() => void) | undefined;
+      const timeout = setTimeout(() => {
+        cleanup = animateRows();
+      }, 1000);
+      return () => {
+        clearTimeout(timeout);
+        cleanup?.();
+      };
     }
   }, [isFetching, currentRowIndex, finalBoardRows.length]);
 
@@ -138,8 +145,12 @@ function HomeContent() {
         const data = await response.json();
         const newPrice = parseFloat(data["amount"]);
 
+        if (isNaN(newPrice)) {
+          throw new Error("Invalid price data");
+        }
+
         // Check if this is not the first fetch
-        if (!isFetching) {
+        if (previousPriceRef.current !== 0) {
           // Compare with previous price to determine direction
           if (newPrice > previousPriceRef.current) {
             setPriceDirection("↑");
@@ -161,9 +172,9 @@ function HomeContent() {
         }
 
         // Update prices
-        const oldPrice = previousPriceRef.current;
         previousPriceRef.current = newPrice;
         setBitcoinPrice(newPrice);
+        setError(null);
       } catch (err) {
         console.error("Failed to fetch Bitcoin price:", err);
         setError("Failed to fetch Bitcoin price");
@@ -176,14 +187,16 @@ function HomeContent() {
     fetchBitcoinPrice();
 
     // Set up countdown interval
+    let remaining = 20;
     const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          fetchBitcoinPrice(); // Fetch when countdown reaches 0
-          return 20; // Reset to 20 seconds
-        }
-        return prev - 1;
-      });
+      remaining -= 1;
+      if (remaining <= 0) {
+        remaining = 20;
+        setCountdown(20);
+        fetchBitcoinPrice(); // Fetch when countdown reaches 0
+      } else {
+        setCountdown(remaining);
+      }
     }, 1000);
 
     // Clean up intervals on component unmount
